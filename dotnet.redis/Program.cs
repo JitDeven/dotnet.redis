@@ -1,4 +1,5 @@
-﻿using System;
+﻿using dotnet.redis.SrcTest;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,6 +11,9 @@ namespace dotnet.redis
     {
         static void Main(string[] args)
         {
+            HashTest.Run();
+
+            Console.Read();
         }
     }
 }
