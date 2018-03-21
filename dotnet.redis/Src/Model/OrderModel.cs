@@ -10,7 +10,12 @@ namespace dotnet.redis.Model
         }
 
         public string OrderNo { get; set; }
-        public DateTime? OrderTime { get; set; }
+
+        /// <summary>
+        ///  
+        /// </summary>
+        public Nullable<DateTime> OrderTime { get; set; }
         public DateTime CreateTime { get; set; }
+        public string OrderName { get; set; }
     }
 }

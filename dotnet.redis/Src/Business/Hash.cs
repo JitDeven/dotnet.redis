@@ -3,6 +3,8 @@ using dotnet.redis.Interface;
 using dotnet.redis.Utility;
 using ServiceStack.Redis;
 using System;
+using System.Reflection;
+using dotnet.redis.Extetion;
 
 namespace dotnet.redis.Business
 {
@@ -13,6 +15,8 @@ namespace dotnet.redis.Business
     /// </summary>
     public class RHash : HashBaseModel, IRHash
     {
+        #region Set
+
         /// <summary>
         /// 将单个 field-value (域-值)对设置到哈希表 key 中
         /// </summary>
@@ -24,29 +28,7 @@ namespace dotnet.redis.Business
             var result = 0L;
             try
             {
-                result = MasterRedisClient.HSet(hashID, RedisByteHelp.GetByte(hashKey), RedisByteHelp.GetByte(hashVal));
-            }
-            catch (RedisException ex)
-            {
-                throw ex;
-            }
-            return result;
-        }
-
-        /// <summary>
-        /// 读取单个hash的值
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="hashID"></param>
-        /// <param name="hkey"></param>
-        /// <returns></returns>
-        public T Get<T>(string hashID, string hkey)
-        {
-            var result = default(T);
-            try
-            {
-                var getValue = MasterRedisClient.HGet(hashID, RedisByteHelp.GetByte(hkey));
-                result = (T)Convert.ChangeType(RedisByteHelp.GetString(getValue), typeof(T));
+                result = MasterRedisClient.HSet(hashID, RedisHelp.GetByte(hashKey), RedisHelp.GetByte(hashVal));
             }
             catch (RedisException ex)
             {
@@ -90,5 +72,107 @@ namespace dotnet.redis.Business
                 throw ex;
             }
         }
+
+        /// <summary>
+        /// 提供泛型操作方法，直接保存实体数据到Redis的Hash中
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="hashID"></param>
+        /// <param name="entiy"></param>
+        public bool Save<T>(string hashID, T entiy) where T : class
+        {
+            var result = false;
+            try
+            {
+                var entityType = entiy.GetType();
+                var entityPropers = entityType.GetProperties();
+
+                // 定义一纬包含一个一纬数组值的二维数组 
+                var hashKeys = new byte[entityPropers.Length][];
+                var hashValues = new byte[entityPropers.Length][];
+
+                #region 赋值
+
+                var index = 0;
+                foreach (var item in entityPropers)
+                {
+                    hashKeys[index] = RedisHelp.GetByte(item.Name);
+                    var itemPro = entityType.GetProperty(item.Name);
+                    if (itemPro != null)
+                    {
+                        var keyVal = string.Empty;
+                        if (itemPro.GetValue(entiy, null) != null)
+                        {
+                            keyVal = (itemPro.GetValue(entiy, null)).ToString();
+                        }
+                        hashValues[index] = RedisHelp.GetByte(keyVal);
+                    }
+                    index++;
+                }
+
+                MSet(hashID, hashKeys, hashValues);
+
+                #endregion
+
+                result = true;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            return result;
+        }
+
+        #endregion
+
+        #region Get
+
+        /// <summary>
+        /// 读取单个hash的值
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="hashID"></param>
+        /// <param name="hkey"></param>
+        /// <returns></returns>
+        public T Get<T>(string hashID, string hkey)
+        {
+            var result = default(T);
+            try
+            {
+                var getValue = MasterRedisClient.HGet(hashID, RedisHelp.GetByte(hkey));
+                result = (T)Convert.ChangeType(RedisHelp.GetString(getValue), typeof(T));
+            }
+            catch (RedisException ex)
+            {
+                throw ex;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 获取hashID的实体数据
+        /// </summary>
+        /// <exception cref="NullReferenceException">Return T class instatnce is Null</exception>
+        /// <typeparam name="T">Defind model class it property must maping redis return HMGet Byte[][]</typeparam>
+        /// <param name="hashid"></param>
+        /// <returns>T instatnce</returns>
+        public T Get<T>(string hashid) where T : class
+        {
+            T entity;
+            try
+            {
+                var hKeys = RedisHelp.GetByteProperty<T>().Item1;
+                var hValus = MasterRedisClient.HMGet(hashid, hKeys);
+                entity = hValus.HValuesToEnity<T>(hKeys, MasterRedisClient);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            return entity;
+        }
+
+        #endregion  
     }
 }

@@ -1,5 +1,6 @@
 ﻿using dotnet.redis.Business;
 using dotnet.redis.Interface;
+using dotnet.redis.Model;
 using dotnet.redis.Utility;
 using E6GPS.Logger;
 using System;
@@ -20,8 +21,10 @@ namespace dotnet.redis.SrcTest
 
         public static void Run()
         {
-            HSet();
-            HMSet();
+            //HSet();
+            //HMSet();
+
+            Save();
         }
 
         private static void HSet()
@@ -38,7 +41,7 @@ namespace dotnet.redis.SrcTest
             catch (Exception ex)
             {
                 LoggerFactory.Error(
-                     String.Format("数据查询异常,存储过程:{0}", "prAlarmUnload"), ex);
+                     String.Format("数据查询异常,HMSet", "HMSet"), ex);
             }
         }
 
@@ -49,18 +52,18 @@ namespace dotnet.redis.SrcTest
                 IRHash hash = new RHash();
                 var keys = new byte[][]
                 {
-                     RedisByteHelp.GetByte("name"),
-                     RedisByteHelp.GetByte("price"),
-                     RedisByteHelp.GetByte("width"),
-                     RedisByteHelp.GetByte("productor data"),
+                     RedisHelp.GetByte("name"),
+                     RedisHelp.GetByte("price"),
+                     RedisHelp.GetByte("width"),
+                     RedisHelp.GetByte("productor data"),
                 };
 
                 var values = new byte[][]
                     {
-                          RedisByteHelp.GetByte("SKU-3"),
-                          RedisByteHelp.GetByte("200.10"),
-                          RedisByteHelp.GetByte("25"),
-                          RedisByteHelp.GetByte(DateTime.Now.ToString()),
+                          RedisHelp.GetByte("SKU-3"),
+                          RedisHelp.GetByte("200.10"),
+                          RedisHelp.GetByte("25"),
+                          RedisHelp.GetByte(DateTime.Now.ToString()),
                     };
 
                 hash.MSet(entityHash, keys, values);
@@ -68,7 +71,43 @@ namespace dotnet.redis.SrcTest
             catch (Exception ex)
             {
                 LoggerFactory.Error(
-                     String.Format("数据查询异常,存储过程:{0}", "prAlarmUnload"), ex);
+                     String.Format("数据查询异常,HMSet", "HMSet"), ex);
+            }
+        }
+
+        /// <summary>
+        /// 保存一个Entity实体
+        /// </summary>
+        private static void Save()
+        {
+            try
+            {
+                IRHash hash = new RHash();
+                var order = new OrderModel
+                {
+                    OrderNo = "order1",
+                    CreateTime = System.DateTime.Now,
+                    OrderTime = System.DateTime.Now.AddDays(-10),
+                    OrderName = "wyg"
+                };
+
+                // 保存
+                var result = hash.Save<OrderModel>(order.OrderNo, order);
+
+                // 保存完了执行更新
+                order.OrderName = "wyg1";
+                hash.Save<OrderModel>(order.OrderNo, order);
+
+                // 
+                var ReaderTest = hash.Get<OrderModel>(order.OrderNo);
+                Console.WriteLine(ReaderTest.OrderName);
+
+                Console.WriteLine(result);
+            }
+            catch (Exception ex)
+            {
+                LoggerFactory.Error(
+                     String.Format("数据查询异常,存储过程:{0}", "Save"), ex);
             }
         }
     }
